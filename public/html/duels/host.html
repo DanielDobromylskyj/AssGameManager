@@ -1,0 +1,39 @@
+<html lang="en">
+    <head>
+        <title>UEA Assassins: Duels @ HOST</title>
+
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        <style>
+
+        </style>
+    </head>
+    <body>
+        <label for="password"></label>
+        <input type="password" name="" id="password">
+
+        <button onclick="startNextDuel()">Next</button>
+
+        <p id="output">No Match Started</p>
+
+        <script>
+            const outputEl = document.getElementById("output");
+            const unsecure_password = document.getElementById("password");
+
+            // THIS PASSWORD SYSTEM IS NOT SECURE, IT'S FOR VERY SMALL SCALE ONLY / TESTING
+
+            function startNextDuel() {
+                fetch(`/host/duels/next?pass=${unsecure_password.value}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.player1) {
+                            outputEl.textContent = `${data.player1} vs ${data.player2}`
+                        } else {
+                            outputEl.textContent = data.error;
+                        }
+                    })
+            }
+        </script>
+    </body>
+</html>

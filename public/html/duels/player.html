@@ -1,0 +1,70 @@
+<html lang="en">
+    <head>
+        <title>UEA Assassins: Duels</title>
+
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        <style>
+            html, body {
+                margin: 0;
+                padding: 0;
+            }
+
+            .center {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                width: 100vw;
+                margin: 0;
+                padding: 0;
+            }
+
+            .red {
+                background-color: red;
+            }
+
+            .green {
+                background-color: lawngreen;
+            }
+
+        </style>
+    </head>
+    <body>
+        <div class="center" id="background">
+            <p id="text">Just Loading...</p>
+        </div>
+
+        <script>
+            const backgroundDiv = document.getElementById("background");
+            const textEl = document.getElementById("text");
+
+            const params = new URLSearchParams(window.location.search);
+            const user_id = params.get('id');
+
+            function updateStatus() {
+                fetch(`/game/duels/status?id=${user_id}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.is_playing) {
+                            if (backgroundDiv.classList.contains("red")) {
+                                backgroundDiv.classList.remove("red");
+                            }
+                            backgroundDiv.classList.add("green");
+                            textEl.textContent = 'You Are Up!'
+                        } else {
+                            if (backgroundDiv.classList.contains("green")) {
+                                backgroundDiv.classList.remove("green");
+                            }
+                            backgroundDiv.classList.add("red");
+                            textEl.textContent = 'Its Someone Else Turn'
+                        }
+                    })
+            }
+
+            setInterval(updateStatus, 1000);
+
+        </script>
+    </body>
+</html>

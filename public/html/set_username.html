@@ -1,0 +1,23 @@
+<html lang="en">
+    <head>
+        <title>Set Your Username</title>
+    </head>
+    <body>
+        <form action="">
+            <label for="username">Name:</label>
+            <input type="text" id="username" name="username" placeholder="Enter your name" required/>
+            <input type="submit" value="Join"/>
+        </form>
+
+        <script>
+            const params = new URLSearchParams(window.location.search);
+
+            let mode = params.get('mode');
+            if (mode == null) {mode = 'duels'}
+
+            if (params.get('username')) {
+                window.location.href = `/connect?mode=${mode}&username=${params.get('username')}`
+            }
+        </script>
+    </body>
+</html>

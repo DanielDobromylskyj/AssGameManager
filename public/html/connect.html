@@ -1,0 +1,15 @@
+<html lang="en">
+    <head>
+        <title>Connecting...</title>
+    </head>
+    <body>
+        <p id="text">Please wait while we connect you to the game...</p>
+
+        <script>
+            const displayEl = document.getElementById("text");
+
+            const params = new URLSearchParams(window.location.search);
+            const name = params.get("name");
+        </script>
+    </body>
+</html>
