@@ -6,19 +6,26 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
         <style>
-            html, body {
-                margin: 0;
-                padding: 0;
-            }
-
             .center {
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                height: 100vh;
-                width: 100vw;
-                margin: 0;
+                height: 50%;
+                width: 50%;
+                margin: auto;
                 padding: 0;
+
+                border-radius: 15px;
+                border: 2px solid white;
+                background-color: white;
+            }
+
+            .center-wrapper {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                justify-content: center;
+
             }
 
             .red {
@@ -32,13 +39,18 @@
         </style>
     </head>
     <body>
-        <div class="center" id="background">
-            <p id="text">Just Loading...</p>
+        <script src="/public/js/header.js"></script>
+
+        <div class="center-wrapper">
+            <div class="center" id="background">
+                <p id="output-text">Just Loading...</p>
+            </div>
         </div>
+
 
         <script>
             const backgroundDiv = document.getElementById("background");
-            const textEl = document.getElementById("text");
+            const textEl = document.getElementById("output-text");
 
             const params = new URLSearchParams(window.location.search);
             const user_id = params.get('id');
@@ -47,18 +59,28 @@
                 fetch(`/game/duels/status?id=${user_id}`)
                     .then(res => res.json())
                     .then(data => {
+                        if (data.error) {
+                            if (backgroundDiv.classList.contains("green")) {
+                                backgroundDiv.classList.remove("green");
+                            }
+                            backgroundDiv.classList.add("red");
+                            textEl.textContent = data.error
+                            return;
+                        }
+
                         if (data.is_playing) {
                             if (backgroundDiv.classList.contains("red")) {
                                 backgroundDiv.classList.remove("red");
                             }
                             backgroundDiv.classList.add("green");
-                            textEl.textContent = 'You Are Up!'
+                            textEl.textContent = 'Its Your Turn!'
                         } else {
+
                             if (backgroundDiv.classList.contains("green")) {
                                 backgroundDiv.classList.remove("green");
                             }
                             backgroundDiv.classList.add("red");
-                            textEl.textContent = 'Its Someone Else Turn'
+                            textEl.textContent = 'Its Not Your Turn'
                         }
                     })
             }

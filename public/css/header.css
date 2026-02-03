@@ -1,0 +1,26 @@
+
+html, body {
+    margin: 0;
+    padding: 0;
+
+    background-color: #52A32C;
+}
+
+header {
+    background-color: white;
+    color: #3C7637;
+
+    height: 50px;
+    text-align: center;
+}
+
+header > h1 {
+    padding-top: 8px;
+}
+
+
+@media (max-width: 550px) {
+    header {
+        height: 90px;
+    }
+}

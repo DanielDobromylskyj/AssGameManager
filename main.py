@@ -1,7 +1,10 @@
+import time
+
 import flask
-from flask import request, redirect
+from flask import request, redirect, send_file, abort
 import random
 import hashlib
+import os
 
 def hash_username(username):
     return hashlib.md5(username.encode()).hexdigest()
@@ -14,6 +17,7 @@ class App:
         self.unsecure_password = "UeaAss"
 
         routes = [
+            ("/public/<path:path>", self.get_public, ["GET"]),
             ('/join', self.join, ["GET"]),
             ("/connect", self.connect, ["GET"]),
             ("/game/duels", self.player_duels, ["GET"]),
@@ -28,6 +32,32 @@ class App:
 
         self.players = {}
         self.mode = "duels"
+
+        self.mimes = {
+            "html": "text/html",
+            "css": "text/css",
+            "js": "application/javascript",
+            "png": "image/png",
+            "jpg": "image/jpeg",
+            "gif": "image/gif",
+            "json": "application/json"
+        }
+
+
+
+    def get_public(self, path):
+        path = os.path.join("public", path)
+
+        if os.path.exists(path):
+            ending = path.split(".")[-1]
+
+            mimeType = None
+            if ending in self.mimes:
+                mimeType = self.mimes[ending]
+
+            return send_file(path, mimeType)
+
+        abort(404)
 
     def send_html(self, path):
         with open(path, 'r', encoding='ascii') as f:
@@ -47,10 +77,17 @@ class App:
             return redirect(f'/join?mode={self.mode}')
 
         user_id = hash_username(username)
-        self.players[user_id] = {"playing": False, "display": username}
+        self.players[user_id] = {"playing": False, "display": username, "last_ping": time.time()}
 
         return redirect(f'/game/{mode}?id={user_id}')
         #return self.send_html("public/html/connect.html")
+
+    def cleanup(self):
+        drop_time = time.time() - 30  # secs
+
+        for player_id in self.players:
+            if self.players[player_id]["last_ping"] < drop_time:
+                self.players.pop(player_id)
 
     def _name_is_free(self, name):
         return hash_username(name) not in self.players.keys()
@@ -66,12 +103,13 @@ class App:
         user_id = request.args.get('id')
 
         if not user_id:
-            return { "is_playing": False }
+            return { "error": "Bad User ID"}
 
         if user_id not in self.players:
-            return { "is_playing": False }
+            return { "error": "Not Logged In"}
 
         data = self.players[user_id]
+        self.players[user_id]["last_ping"] = time.time()
 
         if "playing" in data:
             return {"is_playing": data["playing"]}
@@ -84,10 +122,15 @@ class App:
 
     def start_next_duels(self):
         if not request.args.get("pass"):
-            return { "error": "bad key"}
+            return { "error": "Bad Passkey"}
 
         if request.args.get("pass") != self.unsecure_password:
-            return {"error": "bad key"}
+            return {"error": "Bad Passkey"}
+
+        if self.mode != "duels":
+            return { "error": "Game mode 'Duels' is not currently active"}
+
+        self.cleanup()
 
         for player_id in self.players:
             self.players[player_id]["playing"] = False

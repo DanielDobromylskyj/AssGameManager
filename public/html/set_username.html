@@ -1,13 +1,24 @@
 <html lang="en">
     <head>
-        <title>Set Your Username</title>
+        <title>UEA Assassins: Connect</title>
+
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        <link rel="stylesheet" href="/public/css/connect.css">
+
+        <script src="/public/js/header.js" defer></script>
+
     </head>
     <body>
-        <form action="">
-            <label for="username">Name:</label>
-            <input type="text" id="username" name="username" placeholder="Enter your name" required/>
-            <input type="submit" value="Join"/>
-        </form>
+        <div class="form-wrapper">
+            <form action="">
+                <label for="username"></label>
+                <input type="text" id="username" name="username" placeholder="Enter your name" required/>
+                <input type="submit" value="Join"/>
+            </form>
+        </div>
+
 
         <script>
             const params = new URLSearchParams(window.location.search);

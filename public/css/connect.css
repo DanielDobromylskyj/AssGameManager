@@ -1,0 +1,28 @@
+
+.form-wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+}
+
+.form-wrapper > form {
+    background-color: white;
+    border-radius: 15px;
+    padding: 20px;
+    width: fit-content;
+    height: fit-content;
+
+    margin: auto;
+
+    display: flex;
+    justify-content: center;
+    text-align: center;
+}
+
+.form-wrapper > form > * {
+    margin: 10px;
+    display: block;
+}
