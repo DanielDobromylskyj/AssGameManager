@@ -1,6 +1,6 @@
 import random
 import time
-from flask import redirect
+from flask import request, abort
 
 
 class Game:
@@ -19,69 +19,103 @@ class Game:
             ("duels_t", self.get_host_duels, False),
             ("duels_t/bracket", self.get_brackets, True),
             ("duels_t/players", self.get_players, True),
+            ("duels_t/on_win", self.on_duel_end, True),
+            ("duels_t/current", self.get_current_duel, True),
+            ("duels_t/start", self.generate_tournament, True),
         ]
 
         self.bracket_layout = []
 
-        # Testing Only!!!
-        self.add_random_players()
-        self.generate_tournament()
-
-    def add_random_players(self):
-        print("DEBUG FUNCTION CALLED")
-
-        self.players = {
-            "1": {"playing": False, "display": "Ben Dover", "last_ping": time.time()},
-            "2": {"playing": False, "display": "Luka Mycleavage", "last_ping": time.time()},
-            "3": {"playing": False, "display": "Mike Ox Long", "last_ping": time.time()},
-            "4": {"playing": False, "display": "Dixie Normus", "last_ping": time.time()},
-            "5": {"playing": False, "display": "Ivana Sukyuov", "last_ping": time.time()},
-            "6": {"playing": False, "display": "Ivana Humpalot", "last_ping": time.time()},
-            "7": {"playing": False, "display": "Fook Yu", "last_ping": time.time()},
-            "8": {"playing": False, "display": "Dixie Rect", "last_ping": time.time()},
-            "9": {"playing": False, "display": "Hugh Janus", "last_ping": time.time()},
-        }
+        self.current_bracket = 0
+        self.current_duel = 0
 
     def get_players(self):
         return self.players
 
     def generate_tournament(self):
+        # Reset
+        self.current_bracket = 0
+        self.current_duel = 0
+
         # Seed the game
         players = [*self.players]  # Copy array
         random.shuffle(players)
 
 
         slots = [
-            (players[(game_index*2)], players[(game_index*2) + 1])
-            for game_index in range(len(players) // 2)
+            {
+                "p1": players[(game_index*2)],
+                "p2": players[(game_index*2) + 1],
+                "mode": "unactive", "next": None
+            } for game_index in range(len(players) // 2)
         ]
 
         if len(players) % 2 != 0:
-            slots.append((players[-1],))
+            slots.append({
+                "p1": players[-1], "p2": False, "mode": "solo", "next": None
+            })
 
-        self.bracket_layout = [
-            {
-                "slots": slots,
-                "connections": []
-            }
-        ]
+        self.bracket_layout = [slots]
 
         while len(slots) > 1:
             new_slots = [
-                (None, None)
+                { "p1": None, "p2": None, "mode": "unactive", "next": None }
                 for game_index in range(len(slots) // 2)
             ]
 
             if len(slots) % 2 != 0:
-                new_slots.append((None,))
+                new_slots.append({ "p1": None, "p2": False, "mode": "solo", "next": None })
 
-            self.bracket_layout.append({
-                "slots": new_slots,
-                "connections": []  # todo
-            })
+            self.bracket_layout.append(new_slots)
 
             slots = new_slots
 
+        # Create connections
+        for bracket in self.bracket_layout[:-1]:
+            total_bracket_players = sum([ 2 if duel["p1"] and duel["p2"] else 1 for duel in bracket ])
+
+            if (total_bracket_players % 2) == 0:
+                for i, duel in enumerate(bracket):
+                    duel["next"] = i
+
+            else: # Odd means we need a parse though -> More complicated
+                # Force move the single
+                bracket[-1]["next"] = 0
+
+                # Re-assign the rest
+                pointer = 1
+                for duel in bracket:
+                    if duel["next"] is None:
+                        duel["next"] = pointer
+                        pointer += 1
+
+        self.update_tournament()
+
+        duel = self.get_current_duel()
+        if duel["mode"] != "done":
+            if duel["p1"]:
+                self.players[duel["p1"]]["playing"] = True
+
+            if duel["p2"]:
+                self.players[duel["p2"]]["playing"] = True
+
+        return {}
+
+    def update_tournament(self):
+        for i, bracket in enumerate(self.bracket_layout):
+            if i == len(self.bracket_layout) - 1:
+                continue
+
+            next_bracket = self.bracket_layout[i+1]
+            for duel in bracket:
+                index = duel["next"] // 2
+                player = "p1" if duel["next"] % 2 == 0 else "p2"
+                if duel["mode"].startswith("won"):
+                    winner = duel["p1"] if duel["mode"] == "won_p1" else duel["p2"]
+                    next_bracket[index][player] = winner
+
+                if duel["mode"] == "solo":
+                    next_bracket[index][player] = duel["p1"]
 
 
     def player_duels(self):
@@ -92,3 +126,59 @@ class Game:
 
     def get_brackets(self):
         return self.bracket_layout
+
+    def proceed_to_next_duel(self):
+        self.update_tournament()
+
+        current_bracket = self.bracket_layout[self.current_bracket]
+
+        self.current_duel += 1
+        if self.current_duel == len(current_bracket):
+            self.current_duel = 0
+            self.current_bracket += 1
+
+            if self.current_bracket == len(self.bracket_layout):
+                return None  # Game Complete
+
+        if self.get_current_duel()["mode"] == "solo":
+            return self.proceed_to_next_duel()
+
+
+        duel = self.get_current_duel()
+
+        if duel["mode"] != "done":
+            if duel["p1"]:
+                self.players[duel["p1"]]["playing"] = True
+
+            if duel["p2"]:
+                self.players[duel["p2"]]["playing"] = True
+
+        return None
+
+    def on_duel_end(self):
+        winner = request.args.get("winner")
+
+        duel = self.get_current_duel()
+
+        for player in self.players:
+            self.players[player]["playing"] = False
+
+        if winner == duel["p1"]:
+            duel["mode"] = "won_p1"
+
+        elif winner == duel["p2"]:
+            duel["mode"] = "won_p2"
+
+        else:
+            return abort(400)
+
+        self.proceed_to_next_duel()
+        return {}
+
+    def get_current_duel(self):
+        if self.current_bracket == len(self.bracket_layout):
+            return {"mode": "done"}
+
+        print(self.current_duel)
+
+        return self.bracket_layout[self.current_bracket][self.current_duel]

@@ -14,3 +14,14 @@
     justify-content: center;
     text-align: center;
 }
+
+.wrapper > button {
+    margin: 10px;
+    padding: 5px 10px;
+    border-radius: 5px;
+    min-width: 100px;
+}
+
+.wrapper > button:disabled {
+    background-color: gray;
+}
