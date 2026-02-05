@@ -1,0 +1,149 @@
+<html lang="en">
+    <head>
+        <title>UEA Assassins: Duels Tournament @ HOST</title>
+
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        <link rel="stylesheet" href="/public/css/request_password.css">
+        <link rel="stylesheet" href="/public/css/duels_t.css">
+    </head>
+    <body>
+        <script src="/public/js/header.js"></script>
+
+
+        <div id="overlay">
+            <div id="request-password">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Enter Password">
+                <button onclick="setPassword()">Unlock</button>
+            </div>
+        </div>
+
+
+        <div class="wrapper">
+            <div class="content" id="main">
+                <canvas id="canvas" width="1500px" height="600px"></canvas>
+            </div>
+        </div>
+
+        <script>
+            let unsecure_password = null;
+
+            // THIS PASSWORD SYSTEM IS NOT SECURE, IT'S FOR VERY SMALL SCALE ONLY / TESTING
+
+            function setPassword() {
+                const passwordContainerEl = document.getElementById("request-password");
+                const passwordEl = document.getElementById("password");
+
+                fetch(`/host-validate?pass=${passwordEl.value}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.valid) {
+                            unsecure_password = passwordEl.value;
+
+                            document.getElementById("overlay").style.display = "none";
+                            document.body.classList.remove("locked");
+                        } else {
+                            passwordEl.value = '';
+                            alert("Invalid Password");
+                        }
+                    })
+            }
+
+            // Canvas System
+            const contentDiv = document.getElementById("main");
+            const canvas = document.getElementById("canvas");
+            const ctx = canvas.getContext("2d");
+
+            let players = {};
+            let ready = false;
+
+            function drawBox(x, y, w, h, text) {
+                ctx.fillStyle = "#fff";
+                ctx.fillRect(x, y, w, h);
+
+                ctx.strokeStyle = "#222";
+                ctx.strokeRect(x, y, w, h);
+
+                ctx.fillStyle = "#222";
+                ctx.font = "16px sans-serif";
+
+                ctx.textAlign = "center";       // horizontal
+                ctx.textBaseline = "middle";    // vertical
+
+                ctx.fillText(text, x + w / 2, y + h / 2);
+            }
+
+            function redraw(brackets) {
+                ctx.fillStyle = "white";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                const first_bracket = brackets[0];
+
+                const duo_slot_padding = 10;
+                const vert_slot_padding = 10;
+
+                let bracket_width = canvas.width / ((brackets.length * 2) - 1);
+                let duo_height = canvas.height / first_bracket.slots.length;
+                let slot_height = Math.max(20, duo_height / 2) - duo_slot_padding - vert_slot_padding;
+
+                if (bracket_width > 200) {
+                    bracket_width = 200;
+                }
+
+                const xOffset = (canvas.width / 2) - ((bracket_width * (brackets.length * 2 - 1)) / 2);
+
+                brackets.forEach((bracket, i) => {
+                    const yOffset = (canvas.height / 2) - ((bracket.slots.length * duo_height) / 2);
+
+                    bracket.slots.forEach((slot, j) => {
+                        let p1 = "-";
+                        let p2 = "-";
+                        if (slot[0]) { p1 = players[slot[0]].display; }
+                        if (slot[1]) { p2 = players[slot[1]].display; }
+
+                        drawBox(
+                            xOffset + (i * bracket_width * 2),
+                            yOffset + (j * duo_height) + (vert_slot_padding/2),
+                            bracket_width, slot_height, p1
+                        );
+                        drawBox(
+                            xOffset + (i * bracket_width * 2),
+                            yOffset + (j * duo_height) + slot_height + (vert_slot_padding/2) + duo_slot_padding,
+                            bracket_width, slot_height, p2
+                        );
+                    })
+
+                })
+
+            }
+
+            async function init() {
+                // wait until unsecure_password becomes truthy
+                while (!unsecure_password) {
+                    await new Promise(r => setTimeout(r, 50));
+                }
+
+                const res = await fetch(`/host/duels_t/players?pass=${unsecure_password}`);
+                players = await res.json();
+                ready = true;
+            }
+
+            async function reload() {
+                // wait until players are loaded
+                while (!ready) {
+                    await new Promise(r => setTimeout(r, 50));
+                }
+
+                const res = await fetch(`/host/duels_t/bracket?pass=${unsecure_password}`);
+                const bracket = await res.json();
+                redraw(bracket);
+            }
+
+
+            init();
+            reload();
+        </script>
+    </body>
+</html>

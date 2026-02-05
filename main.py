@@ -6,31 +6,52 @@ import random
 import hashlib
 import os
 
+import game_duels
+import tournament
+
+
 def hash_username(username):
     return hashlib.md5(username.encode()).hexdigest()
+
+def sha256(data):  # Yes, I know this is VERY bad practice.
+    return hashlib.sha256(data.encode()).hexdigest()
+
 
 class App:
     def __init__(self):
         self.app = flask.Flask(__name__)
         self.app.secret_key = b'UEA-ASS-nyFo83jFIekA'
 
-        self.unsecure_password = "UeaAss"
+        self.unsecure_password = "34707c3f40dfa20c3902b807b627d420d6d474d9d98066ba637953d1cfd6b914"
 
         routes = [
             ("/public/<path:path>", self.get_public, ["GET"]),
             ('/join', self.join, ["GET"]),
             ("/connect", self.connect, ["GET"]),
-            ("/game/duels", self.player_duels, ["GET"]),
-            ("/game/duels/status", self.duels_get_info, ["GET"]),
-            ("/host/duels", self.get_host_duels, ["GET"]),
-            ("/host/duels/next", self.start_next_duels, ["GET"]),
+
+            ("/game/<path:path>", self.on_game_call, ["GET"]),
+            ("/host/<path:path>", self.on_host_call, ["GET"]),
+            ("/host-validate", self.host_validate_password, ["GET"]),
+
             ("/host/qr_code", self.qr_code, ["GET"]),
         ]
 
         for route, view_func, methods in routes:
             self.app.add_url_rule(route, methods=methods, view_func=view_func)
 
+
         self.players = {}
+
+        self.game_methods = {}
+        self.host_methods = {}
+
+        self.games = {
+            "duels": game_duels.Game(self),
+            "duels_t": tournament.Game(self),
+        }
+
+        self.__reload_game_methods()
+
         self.mode = "duels"
 
         self.mimes = {
@@ -43,7 +64,21 @@ class App:
             "json": "application/json"
         }
 
+    def __reload_game_methods(self):
+        for game_name in self.games:
+            game = self.games[game_name]
 
+            for path, func, protected in game.host_methods:
+                if path not in self.host_methods:
+                    self.host_methods[path] = (func, protected)
+                else:
+                    raise ValueError(f"Host method {path} already exists")
+
+            for path, func in game.game_methods:
+                if path not in self.game_methods:
+                    self.game_methods[path] = func
+                else:
+                    raise ValueError(f"Game method {path} already exists")
 
     def get_public(self, path):
         path = os.path.join("public", path)
@@ -82,8 +117,43 @@ class App:
         return redirect(f'/game/{mode}?id={user_id}')
         #return self.send_html("public/html/connect.html")
 
+    def on_game_call(self, path):
+        user_id = request.args.get("id")
+
+        if not user_id:
+            abort(400)
+
+        self.players[user_id]["last_ping"] = time.time()
+
+        if path not in self.game_methods:
+            abort(404)
+
+        return self.game_methods[path]()
+
+    def on_host_call(self, path):
+        if path not in self.host_methods:
+            abort(404)
+
+        password = request.args.get("pass")
+
+        if not self.validate_password(password) and self.host_methods[path][1]:
+            abort(400)
+
+        self.cleanup()
+
+        return self.host_methods[path][0]()
+
+    def host_validate_password(self):
+        return {"valid": self.validate_password(request.args.get("pass"))}
+
+    def validate_password(self, password):
+        try:
+            return sha256(password) == self.unsecure_password
+        except AttributeError:
+            return False
+
     def cleanup(self):
-        drop_time = time.time() - 30  # secs
+        drop_time = time.time() - (5 * 60)  # secs (5 mins)
 
         for player_id in self.players:
             if self.players[player_id]["last_ping"] < drop_time:
@@ -95,58 +165,6 @@ class App:
     def is_name_free(self):
         name = request.args.get('name')
         return {"available": self._name_is_free(name)}
-
-    def player_duels(self):
-        return self.send_html("public/html/duels/player.html")
-
-    def duels_get_info(self):
-        user_id = request.args.get('id')
-
-        if not user_id:
-            return { "error": "Bad User ID"}
-
-        if user_id not in self.players:
-            return { "error": "Not Logged In"}
-
-        data = self.players[user_id]
-        self.players[user_id]["last_ping"] = time.time()
-
-        if "playing" in data:
-            return {"is_playing": data["playing"]}
-
-        return { "is_playing": False }
-
-
-    def get_host_duels(self):
-        return self.send_html("public/html/duels/host.html")
-
-    def start_next_duels(self):
-        if not request.args.get("pass"):
-            return { "error": "Bad Passkey"}
-
-        if request.args.get("pass") != self.unsecure_password:
-            return {"error": "Bad Passkey"}
-
-        if self.mode != "duels":
-            return { "error": "Game mode 'Duels' is not currently active"}
-
-        self.cleanup()
-
-        for player_id in self.players:
-            self.players[player_id]["playing"] = False
-
-        ids = list(self.players.keys())
-        p1 = random.choice(ids)
-        p2 = p1
-
-        if len(self.players) > 1:
-            while p2 == p1:
-                p2 = random.choice(ids)
-
-        self.players[p1]["playing"] = True
-        self.players[p2]["playing"] = True
-
-        return {"player1": self.players[p1]["display"], "player2": self.players[p2]["display"]}
 
     def qr_code(self):
         return self.send_html("public/html/qrcode.html")

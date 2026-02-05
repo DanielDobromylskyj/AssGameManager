@@ -3,7 +3,7 @@
 const head = `<link rel="stylesheet" href="/public/css/header.css">`
 const body = `
 <header>
-    <h1>UEA Assassins Society - Game Hosting</h1>
+    <h1>UEA Assassins Society - Game Master</h1>
 </header>
 
 `;

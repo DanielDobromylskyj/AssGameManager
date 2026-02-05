@@ -54,9 +54,16 @@
 
             const params = new URLSearchParams(window.location.search);
             const user_id = params.get('id');
+            const is_tournament = params.get('tournament') === true;
 
             function updateStatus() {
-                fetch(`/game/duels/status?id=${user_id}`)
+                let pointer = 'duels'
+
+                if (is_tournament) {
+                    pointer = 'duels_t'
+                }
+
+                fetch(`/game/${pointer}/status?id=${user_id}`)
                     .then(res => res.json())
                     .then(data => {
                         if (data.error) {

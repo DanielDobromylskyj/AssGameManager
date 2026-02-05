@@ -5,30 +5,62 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-        <style>
-
-        </style>
+        <link rel="stylesheet" href="/public/css/request_password.css">
+        <link rel="stylesheet" href="/public/css/duels.css">
     </head>
     <body>
-        <label for="password"></label>
-        <input type="password" name="" id="password">
+        <script src="/public/js/header.js"></script>
 
-        <button onclick="startNextDuel()">Next</button>
+        <div id="overlay">
+            <div id="request-password">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Enter Password">
+                <button onclick="setPassword()">Unlock</button>
+            </div>
+        </div>
 
-        <p id="output">No Match Started</p>
+        <div class="content">
+            <p id="output">No Match Started</p>
+            <button onclick="startNextDuel()">Next</button>
+        </div>
+
 
         <script>
             const outputEl = document.getElementById("output");
-            const unsecure_password = document.getElementById("password");
+            let unsecure_password = null;
 
             // THIS PASSWORD SYSTEM IS NOT SECURE, IT'S FOR VERY SMALL SCALE ONLY / TESTING
 
+            function setPassword() {
+                const passwordEl = document.getElementById("password");
+
+                fetch(`/host-validate?pass=${passwordEl.value}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.valid) {
+                            unsecure_password = passwordEl.value;
+
+                            document.getElementById("overlay").style.display = "none";
+                            document.body.classList.remove("locked");
+                        } else {
+                            passwordEl.value = '';
+                            alert("Invalid Password");
+                        }
+                    })
+
+            }
+
+            function truncate(str, max) {
+                if (str.length <= max) return str;
+                return str.slice(0, max);
+            }
+
             function startNextDuel() {
-                fetch(`/host/duels/next?pass=${unsecure_password.value}`)
+                fetch(`/host/duels/next?pass=${unsecure_password}`)
                     .then(res => res.json())
                     .then(data => {
                         if (data.player1) {
-                            outputEl.textContent = `${data.player1} vs ${data.player2}`
+                            outputEl.innerHTML = `<strong>${truncate(data.player1, 20)}</strong> <p>vs</p> <strong>${truncate(data.player2, 20)}</strong>`
                         } else {
                             outputEl.textContent = data.error;
                         }
