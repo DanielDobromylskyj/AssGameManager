@@ -170,7 +170,7 @@ class App:
         return self.send_html("public/html/qrcode.html")
 
     def start(self):
-        self.app.run(debug=True)
+        self.app.run(port=8000, debug=True)
 
 
 
