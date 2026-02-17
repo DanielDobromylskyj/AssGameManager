@@ -1,0 +1,367 @@
+<html lang="en">
+<head>
+    <title>UEA Assassins: Duels Tournament @ HOST</title>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="/public/css/duels_t.css">
+    <style>
+
+        html, body {
+            margin: 0;
+            padding: 0;
+
+            background-color: #52A32C;
+        }
+
+        header {
+            background-color: white;
+            color: #3C7637;
+
+            height: 50px;
+            text-align: center;
+        }
+
+        header > h1 {
+            padding-top: 8px;
+        }
+
+
+        @media (max-width: 550px) {
+            header {
+                height: 90px;
+            }
+        }
+
+    </style>
+</head>
+<body>
+<div class="wrapper">
+    <div class="content" id="main">
+        <canvas id="canvas" width="1500px" height="600px"></canvas>
+    </div>
+</div>
+
+<div class="wrapper">
+    <button id="win_p1" onclick="setWinner('p1')" disabled>Player 1 Wins</button>
+    <button id="btn-next" onclick="nextMatchup()">Next</button>
+        <button id="start-btn">Start</button>
+        <button id="restart-btn">Reset</button>
+    <button id="win_p2" onclick="setWinner('p2')" disabled>Player 2 Wins</button>
+</div>
+
+<script>
+    // Canvas System
+    const contentDiv = document.getElementById("main");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    const p1WinButton = document.getElementById("win_p1");
+    const p2WinButton = document.getElementById("win_p2");
+    const nextButton = document.getElementById("btn-next");
+
+    let player_boxes = [];
+    let players = {};
+    let ready = false;
+    let ingame = false;
+
+    let p1 = null;
+    let p2 = null;
+
+    async function start() {
+        await fetch(`/host/tournament/start`);
+        ingame = true;
+
+        const res = await fetch(`/host/tournament/players`);
+        players = await res.json();
+        ready = true;
+
+        await reload();
+    }
+
+    async function restart() {
+        await fetch(`/host/tournament/reset`);
+        ingame = false;
+    }
+
+    document.getElementById("start-btn").addEventListener('click', start);
+    document.getElementById("restart-btn").addEventListener('click', restart);
+
+    function nextMatchup() {
+        if (!ingame) {
+            return;
+        }
+
+        fetch(`/host/tournament/current`)
+            .then(res => res.json())
+            .then(duel => {
+                if (duel.mode === "done") {
+                    ingame = false;
+                    ctx.fillStyle = "white";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    return;
+                }
+
+                p1 = duel.p1;
+                p2 = duel.p2;
+
+                nextButton.disabled = true;
+
+                displayMatchup();
+            })
+    }
+
+    function setWinner(player) {
+        if (!ready) {
+            return;
+        }
+
+        let winner_name = p1;
+        if (player !== "p1") {
+            winner_name = p2;
+        }
+
+        fetch(`/host/tournament/on_win?winner=${winner_name}`)
+            .then(res => res.json())
+            .then(data => reload())
+    }
+
+    function drawBox(x, y, w, h, text, fill_colour = null) {
+        if (fill_colour === null) {
+            fill_colour = "#fff";
+        }
+
+        ctx.fillStyle = fill_colour;
+        ctx.fillRect(x, y, w, h);
+
+        ctx.strokeStyle = "#222";
+        ctx.strokeRect(x, y, w, h);
+
+        ctx.fillStyle = "#222";
+        ctx.font = "16px sans-serif";
+
+        ctx.textAlign = "center";       // horizontal
+        ctx.textBaseline = "middle";    // vertical
+
+        ctx.fillText(text, x + w / 2, y + h / 2);
+    }
+
+    function redraw(brackets) {
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (!brackets.length) {
+            return;
+        }
+
+        const first_bracket = brackets[0];
+
+        const duo_slot_padding = 10;
+        const vert_slot_padding = 10;
+        const duo_connection_offset = 10;
+        const connection_padding = 20;
+
+        let bracket_width = canvas.width / ((brackets.length * 2) - 1);
+        let duo_height = canvas.height / first_bracket.length;
+        let slot_height = Math.max(20, duo_height / 2) - duo_slot_padding - vert_slot_padding;
+
+        if (bracket_width > 200) {
+            bracket_width = 200;
+        }
+
+        const xOffset = (canvas.width / 2) - ((bracket_width * (brackets.length * 2 - 1)) / 2);
+
+        player_boxes = [];
+
+        brackets.forEach((bracket, i) => {
+            let bracket_player_boxes = []
+            const yOffset = (canvas.height / 2) - ((bracket.length * duo_height) / 2);
+
+            bracket.forEach((slot, j) => {
+                let p1 = "-";
+                let p2 = "-";
+                if (slot.p1) {
+                    p1 = players[slot.p1].display;
+                }
+                if (slot.p2) {
+                    p2 = players[slot.p2].display;
+                }
+
+                const x1 = xOffset + (i * bracket_width * 2);
+                const y1 = yOffset + (j * duo_height) + (vert_slot_padding / 2);
+                const x2 = xOffset + (i * bracket_width * 2);
+                const y2 = yOffset + (j * duo_height) + slot_height + (vert_slot_padding / 2) + duo_slot_padding;
+
+                let colour1 = "#fff"
+                let colour2 = "#fff"
+
+                if (slot.mode === "won_p1") {
+                    colour1 = "#B4FFA8";
+                    colour2 = "#FF8787";
+                } else if (slot.mode === "won_p2") {
+                    colour1 = "#FF8787";
+                    colour2 = "#B4FFA8";
+                }
+
+                if (slot.mode === "solo") {
+                    colour2 = "#BDBDBD";
+
+                    if (slot.p1) {
+                        colour1 = "#B4FFA8";
+                    }
+                }
+
+                bracket_player_boxes.push([x1, y1, x2, y2])
+                drawBox(x1, y1, bracket_width, slot_height, p1, colour1);
+                drawBox(x2, y2, bracket_width, slot_height, p2, colour2);
+
+                const start_x1 = x1 + bracket_width;
+                const start_y1 = y1 + slot_height / 2;
+                const start_x2 = x2 + bracket_width;
+                const start_y2 = y2 + slot_height / 2;
+
+                ctx.beginPath();
+                ctx.moveTo(start_x1, start_y1);
+                ctx.lineTo(start_x1 + duo_connection_offset, start_y1);
+                ctx.lineTo(start_x2 + duo_connection_offset, start_y2);
+                ctx.lineTo(start_x2, start_y2);
+                ctx.stroke()
+
+            })
+
+            player_boxes.push(bracket_player_boxes);
+
+            // If Not the first bracket ->  Draw Connections
+            if (i !== 0) {
+                const previous_bracket = brackets[i - 1];
+                const previous_boxes = player_boxes[i - 1];
+                const current_boxes = player_boxes[i];
+
+                previous_bracket.forEach((previous_duel, k) => {
+                    const pointer = previous_duel.next;
+
+                    const start_y1 = previous_boxes[k][1] + slot_height / 2;
+                    const start_y2 = previous_boxes[k][3] + slot_height / 2;
+
+                    const start_x = previous_boxes[k][0] + bracket_width + duo_connection_offset;
+                    const start_y = start_y1 + (start_y2 - start_y1) / 2;
+
+                    const box_index = Math.floor(pointer / 2);
+                    const sub_offset = (pointer % 2) * 2;
+
+                    const end_x = current_boxes[box_index][sub_offset];
+                    const end_y = current_boxes[box_index][sub_offset + 1] + slot_height / 2;
+
+                    const middle_x_offset = duo_connection_offset + (connection_padding / 2) + ((bracket_width - connection_padding - duo_connection_offset) / previous_bracket.length) * k;
+
+                    ctx.beginPath();
+                    ctx.moveTo(start_x, start_y);
+                    ctx.lineTo(start_x + middle_x_offset, start_y);
+                    ctx.lineTo(start_x + middle_x_offset, end_y);
+                    ctx.lineTo(end_x, end_y);
+                    ctx.stroke()
+                })
+
+            }
+        })
+    }
+
+    function drawMatchupFrame(t) {
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        let x1;
+        let x2;
+        let y1 = canvas.height / 3;
+        let y2 = (canvas.height / 3) * 2;
+        let vs_brightness = 0;
+
+        if (t < 0.2) {
+            const delta = (canvas.width / 3) * ((t - 0.1) * 10);
+            x1 = delta;
+            x2 = canvas.width - delta;
+            vs_brightness = 1 - (t * 2);
+        } else if (t < 0.7) {
+            const delta = (t - 0.2) * (canvas.width / 12) * 2;
+            x1 = (canvas.width / 3) + delta;
+            x2 = canvas.width - x1;
+        } else {
+            const delta = (t - 0.7) * 3.33 * canvas.width;
+            x1 = (canvas.width / 3) + (canvas.width / 12) + delta;
+            x2 = canvas.width - x1;
+            vs_brightness = (t - 0.7) * 3.33;
+        }
+
+        ctx.fillStyle = "#222";
+        ctx.font = "32px sans-serif";
+
+        ctx.fillText(players[p1].display, x1, y1);
+        ctx.fillText(players[p2].display, x2, y2);
+
+        ctx.fillStyle = `rgb(${vs_brightness * 255}, ${vs_brightness * 255}, ${vs_brightness * 255})`;
+
+        ctx.fillText("vs", (canvas.width / 2), (canvas.height / 2));
+
+        if (t >= 1) {
+            ctx.fillStyle = "#222";
+            ctx.font = "32px sans-serif";
+
+            ctx.fillText(`${players[p1].display}   vs   ${players[p2].display}`, (canvas.width / 2), (canvas.height / 2));
+
+            p1WinButton.disabled = false;
+            p2WinButton.disabled = false;
+        }
+
+    }
+
+    function displayMatchup() {
+        if (ready) {
+            animate(2000, drawMatchupFrame)
+        }
+    }
+
+    function animate(duration, draw) {
+        ready = false; // Ensure we cant start reload shit in the middle of an animation
+
+        let start = null;
+
+        function frame(timestamp) {
+            if (!start) start = timestamp;
+
+            const elapsed = timestamp - start;
+            const t = Math.min(elapsed / duration, 1);
+
+            draw(t);
+
+            if (t < 1) {
+                requestAnimationFrame(frame);
+            } else {
+                ready = true;
+            }
+        }
+
+        requestAnimationFrame(frame);
+    }
+
+
+    async function reload() {
+        // wait until players are loaded
+        while (!ready) {
+            await new Promise(r => setTimeout(r, 50));
+        }
+
+        const res = await fetch(`/host/tournament/bracket`);
+        const bracket = await res.json();
+        redraw(bracket);
+
+        p1WinButton.disabled = true;
+        p2WinButton.disabled = true;
+        nextButton.disabled = false;
+    }
+
+
+    reload();
+</script>
+</body>
+</html>

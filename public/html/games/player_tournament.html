@@ -36,6 +36,10 @@
                 background-color: lawngreen;
             }
 
+            .orange {
+                background-color: orange;
+            }
+
         </style>
     </head>
     <body>
@@ -45,33 +49,46 @@
             <div class="center" id="background">
                 <p id="output-text">Just Loading...</p>
             </div>
+            <button id="rejoin-btn" hidden>Attempt Rejoin</button>
         </div>
 
 
         <script>
             const backgroundDiv = document.getElementById("background");
             const textEl = document.getElementById("output-text");
+            const rejoinEl = document.getElementById("rejoin-btn");
 
-            const params = new URLSearchParams(window.location.search);
-            const user_id = params.get('id');
-            const is_tournament = params.get('tournament') === true;
+            function rejoin() {
+                let href = window.location.href;
 
-            function updateStatus() {
-                let pointer = 'duels'
-
-                if (is_tournament) {
-                    pointer = 'duels_t'
+                if (!href.endsWith("/")) {
+                    href += "/"
                 }
 
-                fetch(`/game/${pointer}/status?id=${user_id}`)
+                window.location.href = href + "join";
+            }
+
+            rejoinEl.addEventListener("click", rejoin)
+
+            function updateStatus() {
+                fetch(`/game/tournament/status`)
                     .then(res => res.json())
                     .then(data => {
                         if (data.error) {
                             if (backgroundDiv.classList.contains("green")) {
                                 backgroundDiv.classList.remove("green");
                             }
-                            backgroundDiv.classList.add("red");
+                            if (backgroundDiv.classList.contains("red")) {
+                                backgroundDiv.classList.remove("red");
+                            }
+
+                            backgroundDiv.classList.add("orange");
                             textEl.textContent = data.error
+
+                            if (data.error === "You are not a part of this game") {
+                                rejoinEl.hidden = false;
+                            }
+
                             return;
                         }
 
@@ -79,12 +96,18 @@
                             if (backgroundDiv.classList.contains("red")) {
                                 backgroundDiv.classList.remove("red");
                             }
+                            if (backgroundDiv.classList.contains("orange")) {
+                                backgroundDiv.classList.remove("orange");
+                            }
                             backgroundDiv.classList.add("green");
                             textEl.textContent = 'Its Your Turn!'
                         } else {
 
                             if (backgroundDiv.classList.contains("green")) {
                                 backgroundDiv.classList.remove("green");
+                            }
+                            if (backgroundDiv.classList.contains("orange")) {
+                                backgroundDiv.classList.remove("orange");
                             }
                             backgroundDiv.classList.add("red");
                             textEl.textContent = 'Its Not Your Turn'

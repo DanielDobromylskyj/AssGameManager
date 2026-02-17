@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="theme-color" content="#3BA55C"/>
+    <title>Assassins | Tournament QR</title>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+          rel="stylesheet">
+    <link href="/public/css/global.css" rel="stylesheet"/>
+
+  <style>
+            .center {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100%;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+
+            }
+
+            .vertical {
+                display: block;
+                text-align: center;
+
+                padding: 20px 50px;
+                background-color: white;
+                border-radius: 15px;
+
+            }
+
+            .vertical > h1 {
+                padding-bottom: 25px;
+                margin: 0;
+            }
+
+            #text {
+              color: black;
+            }
+
+        </style>
+</head>
+
+<body>
+
+<header class="header">
+    <div class="header-inner">
+        <div class="header-brand">
+            <img src="/public/logo.png" alt="">
+            <strong>Assassins</strong>
+        </div>
+
+        <nav class="header-nav">
+            <a href="/" class="active">Account</a>
+            <a href="#">Leaderboard</a>
+        </nav>
+
+        <div>
+            <button class="icon-btn">🔔</button>
+            <button class="icon-btn danger">⎋</button>
+        </div>
+    </div>
+</header>
+
+<main class="main">
+    <h1 class="page-title">Tournament QR Code</h1>
+
+
+
+    <div class="card">
+      <div class="center">
+            <div class="vertical">
+                <h1 id="text"></h1>
+                <div id="qrcode"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        let mode = params.get('mode');
+
+        if (!mode) {
+            mode = "duels";
+        }
+
+        new QRCode(document.getElementById("qrcode"), {
+            text: `https://norfolk3dprinting.co.uk/game/tournament/join`,
+            width: 500,
+            height: 500
+        });
+
+        document.getElementById("text").textContent = `Scan to join`
+    </script>
+</main>
+
+
+</body>
+</html>

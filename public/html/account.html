@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="theme-color" content="#3BA55C"/>
+    <title>Assassins | Account</title>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+          rel="stylesheet">
+    <link href="/public/css/global.css" rel="stylesheet"/>
+</head>
+
+<body>
+
+<header class="header">
+    <div class="header-inner">
+        <div class="header-brand">
+            <img src="/public/logo.png" alt="">
+            <strong>Assassins</strong>
+        </div>
+
+        <nav class="header-nav">
+            <a href="/" class="active">Account</a>
+            <a href="#">Leaderboard</a>
+        </nav>
+
+        <div>
+            <button class="icon-btn">🔔</button>
+            <button class="icon-btn danger">⎋</button>
+        </div>
+    </div>
+</header>
+
+<main class="main">
+    <h1 class="page-title">Account Settings</h1>
+    <p class="page-desc">View your account details and manage your display name.</p>
+
+    <div class="card">
+        <div class="profile-row">
+            <div class="avatar">N/A</div>
+
+            <div>
+                <div class="name-row">
+                    <h2 id="displayNameHeader"></h2>
+                    <div id="badges">
+                        <!--<span class="badge">Game Master</span> -->
+                    </div>
+                </div>
+
+                <p class="page-desc">Member since February 2026</p>
+
+                <div class="stats">
+                    <div class="stat">
+                        <strong id="confirmed-kills"></strong>
+                        <span class="page-desc">Confirmed Kills</span>
+                    </div>
+
+                    <div class="stat">
+                        <strong id="tier">-</strong>
+                        <span class="page-desc">Tier</span>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="separator"></div>
+
+        <div class="missions">
+            <div class="mission">
+                <strong id="rounds"></strong>
+                <div class="page-desc">Rounds Played</div>
+            </div>
+
+            <div class="mission">
+                <strong id="wins"></strong>
+                <div class="page-desc">Wins</div>
+            </div>
+
+            <div class="mission">
+                <strong id="winrate"></strong>
+                <div class="page-desc">Win Rate</div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="card">
+        <h2>Player UUID</h2>
+        <div class="separator"></div>
+        <div class="value-row">
+            <div class="value-box" id="uuid"></div>
+            <button class="copy-btn" data-copy="uuid">📋</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Email</h2>
+        <div class="separator"></div>
+        <div class="value-row">
+            <div class="value-box" id="email"></div>
+            <button class="copy-btn" data-copy="email">📋</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h2>Display Name</h2>
+            <button class="edit-btn" id="editBtn">Edit</button>
+        </div>
+
+        <div class="separator"></div>
+
+        <div id="nameView" class="value-box"></div>
+
+        <div class="edit-form" id="nameEdit">
+            <input id="nameInput" maxlength="32">
+            <div style="margin-top:0.75rem;">
+                <button class="btn-primary" id="saveBtn">Save</button>
+                <button class="btn-ghost" id="cancelBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    const emailEl = document.getElementById("email");
+    const displayNameEl = document.getElementById("nameView");
+    const uuidEl = document.getElementById("uuid");
+    const displayNameHeaderEl = document.getElementById("displayNameHeader");
+
+    const confirmedKillsEl = document.getElementById("confirmed-kills");
+    const tierEl = document.getElementById("tier");
+    const roundsPlayedEl = document.getElementById("rounds");
+    const winsEl = document.getElementById("wins");
+    const winRateEl = document.getElementById("winrate");
+
+    const badgesEl = document.getElementById("badges");
+
+    function tierCalc(wins, losses) {
+        if (wins + losses === 0) {
+            return "-"
+        }
+
+        const winRate = (wins / (wins + losses)) * 100;
+        if (winRate > 90) {
+            return "S"
+        }
+        if (winRate > 75) {
+            return "A"
+        }
+        if (winRate > 60) {
+            return "B"
+        }
+        if (winRate > 40) {
+            return "C"
+        }
+        return "D"
+
+    }
+
+    function load() {
+        fetch(`/account-info`)
+            .then(res => res.json())
+            .then(data => {
+                // Account info
+                emailEl.textContent = data.email;
+                displayNameEl.textContent = data.display;
+                displayNameHeaderEl.textContent = data.display;
+                uuidEl.textContent = data.uuid;
+
+                // Stats
+                let winRate = data.stats.wins / (data.stats.wins + data.stats.losses);
+
+                if (data.stats.wins === 0) {
+                    winRate = 0;
+                }
+
+                confirmedKillsEl.textContent = data.stats.kills;
+                roundsPlayedEl.textContent = data.stats.games_played;
+                winsEl.textContent = data.stats.wins;
+                winRateEl.textContent = `${(winRate * 100).toFixed(0)}%`
+                tierEl.textContent = tierCalc(data.stats.wins, data.stats.losses);
+
+                badgesEl.innerHTML = '';
+                data.badges.forEach((badge => {
+                    const span = document.createElement("span");
+                    span.className = "badge";
+                    span.textContent = badge;
+
+                    badgesEl.appendChild(span);
+
+                }))
+
+            })
+    }
+
+    load();
+
+</script>
+<script>
+    const toast = document.getElementById('toast');
+
+    function showToast(msg) {
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    document.querySelectorAll('[data-copy]').forEach(btn => {
+        btn.onclick = () => {
+            const id = btn.dataset.copy;
+            navigator.clipboard.writeText(document.getElementById(id).textContent);
+            showToast('Copied');
+        };
+    });
+
+    const editBtn = document.getElementById('editBtn');
+    const nameView = document.getElementById('nameView');
+    const nameEdit = document.getElementById('nameEdit');
+    const nameInput = document.getElementById('nameInput');
+
+    editBtn.onclick = () => {
+        nameEdit.style.display = 'block';
+        nameView.style.display = 'none';
+        editBtn.style.display = 'none';
+        nameInput.value = nameView.textContent;
+    };
+
+    document.getElementById('saveBtn').onclick = () => {
+        nameView.textContent = nameInput.value.trim();
+        nameView.style.display = 'block';
+        nameEdit.style.display = 'none';
+        editBtn.style.display = 'inline';
+
+        fetch(`/account/set_username?name=${nameInput.value}`)
+            .then(res => {
+                showToast('Display name updated');
+                load();
+            })
+    };
+
+    document.getElementById('cancelBtn').onclick = () => {
+        nameEdit.style.display = 'none';
+        nameView.style.display = 'block';
+        editBtn.style.display = 'inline';
+    };
+</script>
+
+</body>
+</html>
