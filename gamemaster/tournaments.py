@@ -136,9 +136,12 @@ class Game:
 
     def get_current_duel(self):
         if self.game_over:
-            return {}
+            return {"mode": "done"}
 
-        return self.brackets[self.active_bracket][self.active_duel]
+        try:
+            return self.brackets[self.active_bracket][self.active_duel]
+        except IndexError:
+            return {"mode": "done"}
 
     def continue_to_next_duel(self):
         if self.game_over:
@@ -154,11 +157,19 @@ class Game:
             self.game_over = True
 
         if not self.game_over:
+            next_duel = self.get_current_duel()
+
+            if "solo" == next_duel["mode"]:
+                self.continue_to_next_duel()
+
             self.reset_players()
+            self.update_tournament()
             self.update_active_players()
 
     def update_active_players(self):
         new_duel = self.get_current_duel()
+
+        print(new_duel, self.active_players)
 
         if new_duel["mode"] != "done":
             if new_duel["p1"]:
@@ -168,8 +179,9 @@ class Game:
                 self.active_players[new_duel["p2"]]["playing"] = True
 
     def on_duel_end(self):
-        winner = request.args.get("winner")
+        return self._on_duel_end(request.args.get("winner"))
 
+    def _on_duel_end(self, winner):
         duel = self.get_current_duel()
 
         self.reset_players()
