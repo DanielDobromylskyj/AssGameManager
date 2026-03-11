@@ -1,7 +1,13 @@
 import random
+import uuid
 
 from flask import request, abort, redirect
 from flask_login import current_user
+
+class FakeUser:
+    def __init__(self,):
+        self.display = str(uuid.uuid4())
+        self.uuid = self.display
 
 
 class Game:
@@ -59,6 +65,11 @@ class Game:
 
     def join_qr(self):
         return self.app.send_file('public/html/games/qr_tournament.html')
+
+    def auto_join_many(self):
+        """ Function used to generate test users """
+        for i in range(7):
+            self.add_player(FakeUser())
 
     # Game Logic
     def generate_tournament(self):
@@ -149,7 +160,7 @@ class Game:
 
         self.active_duel += 1
 
-        if self.active_duel == len(self.brackets):
+        if self.active_duel == len(self.brackets[self.active_bracket]):
             self.active_duel = 0
             self.active_bracket += 1
 
@@ -168,8 +179,6 @@ class Game:
 
     def update_active_players(self):
         new_duel = self.get_current_duel()
-
-        print(new_duel, self.active_players)
 
         if new_duel["mode"] != "done":
             if new_duel["p1"]:
@@ -219,7 +228,7 @@ class Game:
 
         self.active_duel = 0
         self.active_bracket = 0
-
+        
         return {}
 
     def add_player(self, player):

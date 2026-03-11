@@ -83,7 +83,7 @@
     async function restart() {
         await fetch(`/host/tournament/reset`);
         ingame = false;
-        
+
         ctx.fillStyle = "white";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
